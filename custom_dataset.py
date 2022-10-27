@@ -1,78 +1,110 @@
-# https://www.youtube.com/watch?v=q7ZuZ8ZOErE
-# https://github.com/aladdinpersson/Machine-Learning-Collection/blob/master/ML/TensorFlow/Basics/tutorial18-customdata-images/1_in_subfolders.py
-import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+# https://www.tensorflow.org/tutorials/keras/classification
 import tensorflow as tf
-keras = tf.keras # had to modify this cause imports were throwing weird errors
-layers = tf.keras.layers
-# ImageDataGenerator = tf.keras.preprocessing.image.ImageDataGenerator # method 2 (deprecated, it seems method one is prefered)
 import numpy as np
+import matplotlib.pyplot as plt
 
-print(tf.__version__)
+# plt.figure()
+# plt.plot(np.sin((np.linspace(-np.pi, np.pi, 10001))))
+# plt.show()
 
-# set parameters of dataset
-img_height = 100
-img_width = 100
-batch_size = 2
-model = keras.Sequential(
-    [
-        layers.Input((100, 100, 1)),
-        layers.Conv2D(16, 3, padding="same"),
-        layers.Conv2D(32, 3, padding="same"),
-        layers.MaxPooling2D(),
-        layers.Flatten(),
-        layers.Dense(10),
-    ]
-)
-
-# method 1
-# make training set from mnist_subfolder (shuffled data)
-ds_train = tf.keras.preprocessing.image_dataset_from_directory(
-    "temp/recycling_symbols/",
-    labels="inferred",
-    label_mode="int",  # alternatives: categorical, binary
-    # class_names=['0', '1', '2', '3', ...]
-    color_mode="grayscale",
-    batch_size=batch_size,
-    image_size=(img_height, img_width),    # reshape if not in this size
-    shuffle=True,
+# Import fashion mnist
+# fashion_mnist = tf.keras.datasets.fashion_mnist
+# (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+batch_size = 32
+img_height = 128
+img_width = 128
+train_images = tf.keras.utils.image_dataset_from_directory(
+    "data/recycling_symbols/",
+    labels='inferred',
+    label_mode='int',
+    validation_split=0.1, 
+    subset="training",
     seed=123,
-    # validation_split=0,    # originally 0.1 (setting aside 10% of data for validation, but I made separate test subfolder)
-    # subset="training",
+    image_size=(img_height, img_width),
+    batch_size=batch_size
 )
-
-# make validation set from test subfolder
-ds_validation = tf.keras.preprocessing.image_dataset_from_directory(
-    "temp/test/",    # was same as ds_train
-    labels="inferred",
-    label_mode="int",
-    # class_names=['0', '1', '2', '3', ...]
-    color_mode="grayscale",
-    batch_size=batch_size,
-    image_size=(img_height, img_width),    # reshape if not in this size
-    shuffle=True,
+test_images = tf.keras.utils.image_dataset_from_directory(
+    "data/recycling_symbols/",
+    labels='inferred',
+    label_mode='int',
+    validation_split=0.1, 
+    subset="validation",
     seed=123,
-    # validation_split=1,    # originally 0.1
-    # subset="validation",
+    image_size=(img_height, img_width),
+    batch_size=batch_size
 )
 
-# Compile and Train
-model.compile(
-    optimizer='adam',
-    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-    metrics=['accuracy']
-)
+class_names = ["Recyc1", "Recyc2", "Recyc3", "Recyc4", "Recyc5", "Recyc6", "Recyc7"]
 
-model.fit(ds_train, epochs = 10, verbose = 2)
+# for images, labels in test_images.take(1):
+#   for i in range(9):
+#     ax = plt.subplot(3, 3, i + 1)
+#     plt.imshow(images[i].numpy().astype("uint8"))
+#     plt.title(class_names[labels[i]])
+#     plt.axis("off")
+# plt.show()
 
-test_loss, test_acc = model.evaluate(ds_validation, verbose=2)
-print('\nTest accuracy:', test_acc)    # not sure why it outputs 0 (maybe b/c batch size is 2 and having only 1 file in test subfolder is "odd"; see console...)
+# Preprocess data: 0=black 255=white -> 0=black 1=white
+# train_images = train_images / 255.0
+# test_images = test_images / 255.0
+# normalization_layer = tf.keras.layers.Rescaling(1./255)
+# train_images = train_images.map(lambda x, y: (normalization_layer(x), y))
+# test_images = train_images.map(lambda x, y: (normalization_layer(x), y))
 
-# Predict
+data_augmentation = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip(),
+    tf.keras.layers.RandomRotation(0.2),
+    tf.keras.layers.RandomContrast(0.2),
+])
+
+# Set up the layers
+model = tf.keras.Sequential([
+    tf.keras.layers.Rescaling(1./255, input_shape=(img_height, img_width, 3)),
+    data_augmentation,
+    tf.keras.layers.Conv2D(16, 3, padding='same', activation='relu'),
+    tf.keras.layers.MaxPooling2D(),
+    tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu'),
+    tf.keras.layers.MaxPooling2D(),
+    tf.keras.layers.Dropout(0.3),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(128, activation='relu'),
+    tf.keras.layers.Dense(7)
+])
+
+# Compile the model
+model.compile(optimizer='adam', loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), metrics=['accuracy'])
+
+# Train the model
+model.fit(train_images, epochs = 50)
+
+test_loss, test_acc = model.evaluate(test_images, verbose=2)
+print('\nTest accuracy:', test_acc)
+
+# img = tf.keras.preprocessing.image.load_img(
+#     "data/recycling-test/7/IMG_6312.jpg",
+#     target_size=(img_height, img_width)
+# )
+# img_array = tf.keras.preprocessing.image.img_to_array(img)
+# img_array = tf.expand_dims(img_array, 0)
+# predictions = model.predict(img_array)
+# score = predictions[0]
+# print(score)
+
+
+# Make PREDICITONS
+# "Attach a softmax layer to convert the model's linear outputs—logits—to probabilities"
 probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
-predictions = probability_model.predict(ds_validation)
-print(predictions[0])
-print(np.argmax(predictions[0]))
+# since test_images has 10k images, predictions will be an array containing 10k arrays, each having 10 values representing the probabilities that an item is one of the 10 categories
+predictions = probability_model.predict(test_images)
+# return the highest confidence value
+# np.argmax(predictions[0])
+# print(np.argmax(predictions[0]))
+# ^ should return "9", meaning the first image in test_images is predicted to be in the category 9 => Ankle boot (which is correct)
 
-# method 2
-# [...]
+for images, labels in test_images.take(1):
+    for i in range(9):
+        print("-------------")
+        print(predictions[i])
+        print("expected:", class_names[labels[i]])
+        print("prediction:",class_names[np.argmax(predictions[i])])
+    break
