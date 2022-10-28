@@ -7,7 +7,7 @@ batch_size = 2
 img_height = 200
 img_width = 200
 train_images = tf.keras.utils.image_dataset_from_directory(
-    "data/recycling_symbols/",
+    "data/recycling_symbols_filtered/",
     labels='inferred',
     label_mode='int',
     validation_split=0.3,
@@ -18,7 +18,7 @@ train_images = tf.keras.utils.image_dataset_from_directory(
     batch_size=batch_size
 )
 test_images = tf.keras.utils.image_dataset_from_directory(
-    "data/recycling_symbols/",
+    "data/recycling_symbols_filtered/",
     labels='inferred',
     label_mode='int',
     validation_split=0.3, 
