@@ -1,15 +1,14 @@
 import os
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
-print(tf.__version__)
-
-data_dir = "data/recycling_symbols"
+data_dir = "data/recycling_symbols_full"
 test_dir = "data/test"
 
 batch_size = 16
-img_height = 128
-img_width = 128
+img_height = 200
+img_width = 200
 
 class_names = ["1", "2", "3", "4", "5", "6", "7"]
 
@@ -17,7 +16,7 @@ train_ds = tf.keras.utils.image_dataset_from_directory(
     data_dir,
     labels='inferred',
     label_mode='int',
-    validation_split=0.1, 
+    validation_split=0.2, 
     subset="training",
     seed=123,
     color_mode='rgb',
@@ -29,7 +28,7 @@ val_ds = tf.keras.utils.image_dataset_from_directory(
     data_dir,
     labels='inferred',
     label_mode='int',
-    validation_split=0.1, 
+    validation_split=0.2, 
     subset="validation",
     seed=123,
     color_mode='rgb',
@@ -76,48 +75,20 @@ base_model = tf.keras.applications.MobileNetV2(
 
 base_model.trainable = False
 
+global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
+
+prediction_layer = tf.keras.layers.Dense(num_classes)
+
 inputs = tf.keras.Input(shape=(img_height, img_width, 3))
 x = data_augmentation(inputs)
-
-scale_layer = tf.keras.layers.Rescaling(scale=1 / 127.5, offset=-1)
-x = scale_layer(x)
+x = preprocess_input(x)
 
 x = base_model(x, training=False)
-x = tf.keras.layers.GlobalAveragePooling2D()(x)
+# x = tf.keras.layers.Dropout(0.1)(x)
+x = global_average_layer(x)
 x = tf.keras.layers.Dropout(0.2)(x)
-outputs = tf.keras.layers.Dense(num_classes)(x)
+outputs = prediction_layer(x)
 model = tf.keras.Model(inputs, outputs)
-
-# model = tf.keras.Sequential([
-#     tf.keras.layers.Rescaling(1./255, input_shape=(img_height, img_width, 3)),
-#     data_augmentation,
-#     tf.keras.layers.Conv2D(16, 3, padding='same', activation='relu'),
-#     tf.keras.layers.MaxPooling2D(),
-#     tf.keras.layers.Conv2D(32, 3, padding='same', activation='relu'),
-#     tf.keras.layers.MaxPooling2D(),
-#     tf.keras.layers.Conv2D(64, 3, padding='same', activation='relu'),
-#     tf.keras.layers.MaxPooling2D(),
-#     tf.keras.layers.Dropout(0.2),
-#     tf.keras.layers.Flatten(),
-#     tf.keras.layers.Dense(128, activation='relu'),
-#     tf.keras.layers.Dense(num_classes)
-# ])
-
-# model = tf.keras.Sequential([
-#     tf.keras.layers.Rescaling(1.0/255),
-#     tf.keras.layers.Conv2D(64, (3,3), activation='relu', input_shape=(100,100,3)),
-#     tf.keras.layers.MaxPooling2D(2, 2),
-#     tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
-#     tf.keras.layers.MaxPooling2D(2, 2),
-#     tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
-#     tf.keras.layers.MaxPooling2D(2, 2),
-#     tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
-#     tf.keras.layers.MaxPooling2D(2, 2),
-#     tf.keras.layers.Flatten(),
-#     tf.keras.layers.Dropout(0.2),
-#     tf.keras.layers.Dense(512, activation='relu'),
-#     tf.keras.layers.Dense(7, activation='softmax')
-# ])
 
 base_learning_rate = 0.0001
 model.compile(
@@ -127,10 +98,12 @@ model.compile(
 )
 
 # training the model
-model.fit(
+epochs = 50
+
+history = model.fit(
     train_ds,
-    epochs=1,
-    verbose=2
+    validation_data=val_ds,
+    epochs=epochs,
 )
 
 test_loss, test_acc = model.evaluate(val_ds, verbose=2)
@@ -138,14 +111,36 @@ print('\nTest accuracy:', test_acc)
 
 # Prediction
 probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
-predictions = probability_model.predict(val_ds)
-# print(predictions[0])
-# print(np.argmax(predictions[0]))
+predictions = probability_model.predict(test_ds)
+print(predictions[0])
+print(np.argmax(predictions[0]))
 
-for images, labels in val_ds.take(1):
-    for i in range(9):
+for images, labels in test_ds.take(1):
+    for i in range(7):
         print("-------------------------------------")
         print(predictions[i])
-        print("expected:", labels[i])
+        print("expected:", class_names[labels[i]])
         print("prediction:", class_names[np.argmax(predictions[i])])
     break
+
+# Plotting training graph
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs_range = range(epochs)
+
+plt.figure(figsize=(8, 8))
+plt.subplot(1, 2, 1)
+plt.plot(epochs_range, acc, label='Training Accuracy')
+plt.plot(epochs_range, val_acc, label='Validation Accuracy')
+plt.legend(loc='lower right')
+plt.title('Training and Validation Accuracy')
+plt.subplot(1, 2, 2)
+plt.plot(epochs_range, loss, label='Training Loss')
+plt.plot(epochs_range, val_loss, label='Validation Loss')
+plt.legend(loc='upper right')
+plt.title('Training and Validation Loss')
+plt.show()
+
+tf.keras.backend.clear_session()
