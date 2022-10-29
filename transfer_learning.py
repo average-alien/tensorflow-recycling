@@ -8,7 +8,7 @@ data_dir = "data/recycling_symbols"
 test_dir = "data/test"
 
 # ds settings
-batch_size = 32
+batch_size = 64
 img_height = 192
 img_width = 192
 
@@ -63,7 +63,7 @@ num_classes = len(class_names)
 # data augmentaion layers
 data_augmentation = tf.keras.Sequential([
   tf.keras.layers.RandomFlip('horizontal'),
-  tf.keras.layers.RandomRotation(0.3),
+  tf.keras.layers.RandomRotation(0.2),
   tf.keras.layers.RandomContrast(0.2),
   tf.keras.layers.RandomZoom(0.1),
 ])
@@ -78,25 +78,51 @@ base_model = tf.keras.applications.MobileNetV2(
     weights='imagenet'
 )
 
+# # preprocess for resnet
+# preprocess_input = tf.keras.applications.resnet_v2.preprocess_input
+
+# # base resnet model
+# base_model = tf.keras.applications.resnet_v2.ResNet50V2(
+#     include_top=False,
+#     weights='imagenet',
+#     input_shape=(img_height, img_width, 3),
+#     pooling='avg',
+# )
+
+# Feature extraction?
+image_batch, label_batch = next(iter(train_ds))
+feature_batch = base_model(image_batch)
+print(feature_batch.shape)
+
 # freeze the weights
 base_model.trainable = False
 
-# forgot what this does
+# Adding a classification head?
 global_average_layer = tf.keras.layers.GlobalAveragePooling2D()
+feature_batch_average = global_average_layer(feature_batch)
+print(feature_batch_average.shape)
+
+# Defining some trainable layers -- doesn't seem to work
+trainable_layers = tf.keras.Sequential([
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(32, activation='relu'),
+])
 
 # final layer in model
 prediction_layer = tf.keras.layers.Dense(num_classes)
+prediction_batch = prediction_layer(feature_batch_average)
+print(prediction_batch.shape)
 
-# define input tensor and start setting up our model
+# define input tensor and start setting up our model by chaining together all the defined layers
 inputs = tf.keras.Input(shape=(img_height, img_width, 3))
-# not too sure why its set up with this method
 x = data_augmentation(inputs) 
 x = preprocess_input(x)
 
-x = base_model(x, training=False) # make sure training is set to false for base model
-# x = tf.keras.layers.Dropout(0.1)(x)
+x = base_model(x, training=False) # make sure training is set to false
 x = global_average_layer(x)
 x = tf.keras.layers.Dropout(0.2)(x)
+# x = trainable_layers(x)
+# x = tf.keras.layers.Dropout(0.2)(x)
 outputs = prediction_layer(x)
 model = tf.keras.Model(inputs, outputs)
 
@@ -107,22 +133,52 @@ model.compile(
     loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=['accuracy']
 )
+model.summary()
 
 # training the model
-epochs = 500
+epochs = 200
 
-history = model.fit(
+# Early stopping to prevent overtraining
+callbacks = tf.keras.callbacks.EarlyStopping(
+    monitor='val_loss',
+    patience=5,
+    mode='auto',
+    verbose=1,
+    restore_best_weights=True
+)
+
+model.fit(
     train_ds,
     validation_data=val_ds,
     epochs=epochs,
+    callbacks=callbacks,
 )
 
-# Saving the trained model
-saved_model = "models/1" # increment number for new versions
+# Fine tuning by training the entire model
+base_model.trainable=True
 
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(learning_rate=base_learning_rate/100),
+    loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+    metrics=['accuracy']
+)
+model.summary()
+
+model.fit(
+    train_ds,
+    epochs=int(epochs/2),
+    validation_data=val_ds,
+    callbacks=callbacks
+)
+
+# File path for saving model
+saved_model = "models/4" # increment number for new versions
+
+# Saving the trained model
 tf.keras.models.save_model(
     model=model,
-    filepath=saved_model
+    filepath=saved_model,
+    overwrite=True
 )
 
 # Test model against validation ds
@@ -142,23 +198,29 @@ for images, labels in test_ds.take(1):
     break
 
 # Plotting training graph
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs_range = range(epochs)
+# acc = history.history['accuracy']
+# val_acc = history.history['val_accuracy']
+# loss = history.history['loss']
+# val_loss = history.history['val_loss']
 
-plt.figure(figsize=(8, 8))
-plt.subplot(1, 2, 1)
-plt.plot(epochs_range, acc, label='Training Accuracy')
-plt.plot(epochs_range, val_acc, label='Validation Accuracy')
-plt.legend(loc='lower right')
-plt.title('Training and Validation Accuracy')
-plt.subplot(1, 2, 2)
-plt.plot(epochs_range, loss, label='Training Loss')
-plt.plot(epochs_range, val_loss, label='Validation Loss')
-plt.legend(loc='upper right')
-plt.title('Training and Validation Loss')
+# plt.figure(figsize=(8, 8))
+# plt.subplot(2, 1, 1)
+# plt.plot(acc, label='Training Accuracy')
+# plt.plot(val_acc, label='Validation Accuracy')
+# plt.legend(loc='lower right')
+# plt.ylabel('Accuracy')
+# plt.ylim([min(plt.ylim()),1])
+# plt.title('Training and Validation Accuracy')
+
+# plt.subplot(2, 1, 2)
+# plt.plot(loss, label='Training Loss')
+# plt.plot(val_loss, label='Validation Loss')
+# plt.legend(loc='upper right')
+# plt.ylabel('Cross Entropy')
+# plt.ylim([0,1.0])
+# plt.title('Training and Validation Loss')
+# plt.xlabel('epoch')
+# plt.show()
+
 # Making sure everything is cleaned up (might not be neccessary)
 tf.keras.backend.clear_session()
-plt.show()

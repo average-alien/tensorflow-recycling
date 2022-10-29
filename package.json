@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.0.0",
+    "@tensorflow/tfjs-node": "^4.0.0"
+  }
+}
