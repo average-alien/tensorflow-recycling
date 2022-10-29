@@ -1,4 +1,5 @@
 .env
-temp
-data
 node_modules
+data
+models
+js-models

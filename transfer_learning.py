@@ -9,8 +9,8 @@ test_dir = "data/test"
 
 # ds settings
 batch_size = 64
-img_height = 96
-img_width = 96
+img_height = 192
+img_width = 192
 
 # loading images into datasets
 train_ds = tf.keras.utils.image_dataset_from_directory(
@@ -63,9 +63,9 @@ num_classes = len(class_names)
 # data augmentaion layers
 data_augmentation = tf.keras.Sequential([
   tf.keras.layers.RandomFlip('horizontal'),
-  tf.keras.layers.RandomRotation(0.2),
-  tf.keras.layers.RandomContrast(0.1),
-#   tf.keras.layers.RandomZoom(0.1),
+  tf.keras.layers.RandomRotation(0.3),
+  tf.keras.layers.RandomContrast(0.2),
+  tf.keras.layers.RandomZoom(0.1),
 ])
 
 # function to process input for mobilenet
@@ -136,7 +136,7 @@ model.compile(
 model.summary()
 
 # training the model
-epochs = 25
+epochs = 300
 
 # Early stopping to prevent overtraining
 callbacks = tf.keras.callbacks.EarlyStopping(
@@ -172,14 +172,14 @@ model.fit(
 )
 
 # File path for saving model
-saved_model = "models/5" # increment number for new versions
+saved_model = "models/6" # increment number for new versions
 
 # Saving the trained model
-# tf.keras.models.save_model(
-#     model=model,
-#     filepath=saved_model,
-#     overwrite=True
-# )
+tf.keras.models.save_model(
+    model=model,
+    filepath=saved_model,
+    overwrite=True
+)
 
 # Test model against validation ds
 test_loss, test_acc = model.evaluate(val_ds, verbose=2)
