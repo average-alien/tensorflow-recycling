@@ -9,15 +9,15 @@ test_dir = "data/test"
 
 # ds settings
 batch_size = 64
-img_height = 192
-img_width = 192
+img_height = 96
+img_width = 96
 
 # loading images into datasets
 train_ds = tf.keras.utils.image_dataset_from_directory(
     data_dir,
     labels='inferred',
     label_mode='int',
-    validation_split=0.2, 
+    validation_split=0.1, 
     subset="training",
     seed=39,
     color_mode='rgb',
@@ -29,7 +29,7 @@ val_ds = tf.keras.utils.image_dataset_from_directory(
     data_dir,
     labels='inferred',
     label_mode='int',
-    validation_split=0.2, 
+    validation_split=0.1, 
     subset="validation",
     seed=39,
     color_mode='rgb',
@@ -64,8 +64,8 @@ num_classes = len(class_names)
 data_augmentation = tf.keras.Sequential([
   tf.keras.layers.RandomFlip('horizontal'),
   tf.keras.layers.RandomRotation(0.2),
-  tf.keras.layers.RandomContrast(0.2),
-  tf.keras.layers.RandomZoom(0.1),
+  tf.keras.layers.RandomContrast(0.1),
+#   tf.keras.layers.RandomZoom(0.1),
 ])
 
 # function to process input for mobilenet
@@ -120,7 +120,7 @@ x = preprocess_input(x)
 
 x = base_model(x, training=False) # make sure training is set to false
 x = global_average_layer(x)
-x = tf.keras.layers.Dropout(0.2)(x)
+x = tf.keras.layers.Dropout(0.5)(x)
 # x = trainable_layers(x)
 # x = tf.keras.layers.Dropout(0.2)(x)
 outputs = prediction_layer(x)
@@ -136,7 +136,7 @@ model.compile(
 model.summary()
 
 # training the model
-epochs = 200
+epochs = 25
 
 # Early stopping to prevent overtraining
 callbacks = tf.keras.callbacks.EarlyStopping(
@@ -172,14 +172,14 @@ model.fit(
 )
 
 # File path for saving model
-saved_model = "models/4" # increment number for new versions
+saved_model = "models/5" # increment number for new versions
 
 # Saving the trained model
-tf.keras.models.save_model(
-    model=model,
-    filepath=saved_model,
-    overwrite=True
-)
+# tf.keras.models.save_model(
+#     model=model,
+#     filepath=saved_model,
+#     overwrite=True
+# )
 
 # Test model against validation ds
 test_loss, test_acc = model.evaluate(val_ds, verbose=2)
