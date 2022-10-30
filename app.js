@@ -1,5 +1,4 @@
-const express = require('express')
-const path = require('path')
+import express from 'express'
 
 const app = express()
 const PORT = 8000
@@ -13,7 +12,7 @@ app.get("/", (req, res) => {
 
 app.get("/model", (req, res) => {
     const options = {
-        root: path.join(__dirname, 'public')
+        root: "./public"
     }
     res.sendFile("./model.json", options)
 })

@@ -4,7 +4,7 @@ import numpy as np
 model = tf.keras.models.load_model("models/4")
 
 # file paths
-data_dir = "data/recycling_symbols_filtered"
+data_dir = "data/recycling_symbols"
 test_dir = "data/test"
 
 # ds settings
@@ -50,9 +50,20 @@ test_ds = tf.keras.utils.image_dataset_from_directory(
 class_names = ["1", "2", "3", "4", "5", "6", "7"]
 
 probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
-predictions = probability_model.predict(train_ds)
+predictions = probability_model.predict(test_ds)
 
-for images, labels in train_ds.take(1):
+saved_model = "models/7" # increment number for new versions
+
+model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
+
+# Saving the trained model
+tf.keras.models.save_model(
+    model=model,
+    filepath=saved_model,
+    overwrite=True
+)
+
+for images, labels in test_ds.take(1):
     for i in range(7):
         print("-------------------------------------")
         print(predictions[i])
