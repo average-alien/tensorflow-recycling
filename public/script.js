@@ -2,30 +2,35 @@
 
 const STATUS = document.getElementById('status');
 const IMAGEUP = document.getElementById('imageUp')
-const TRAIN_BUTTON = document.getElementById('train');
-const MOBILE_NET_INPUT_WIDTH = 192;
-const MOBILE_NET_INPUT_HEIGHT = 192;
-const CLASS_NAMES = ["1", "2", "3", "4", "5", "6", "7"];
+const PREDICT_BUTTON = document.getElementById('predict');
+const INPUT_WIDTH = 192;
+const INPUT_HEIGHT = 192;
+const CLASS_NAMES = ["1 - PET", "2 - HDPE", "3 - PVC", "4 - LDPE", "5 - PP", "6 - PS", "7 - OTHER"];
 const IMAGE = document.getElementById("image")
+const PREVIEW = document.getElementById("preview")
 
 let model = undefined;
 let userImage = undefined
 let predict = false;
 
-TRAIN_BUTTON.addEventListener('click', makePrediction);
+PREDICT_BUTTON.addEventListener('click', makePrediction);
 IMAGEUP.addEventListener('change', e => {
     IMAGE.src = URL.createObjectURL(e.target.files[0])
+    PREVIEW.src = URL.createObjectURL(e.target.files[0])
     IMAGE.onload = () => {
         URL.revokeObjectURL(IMAGE.src)
     }
-})
+    PREVIEW.onload = () => {
+        URL.revokeObjectURL(PREVIEW.src)
+    }
+  })
 
 function makePrediction() {
     if (predict) {
         tf.tidy(function() {
-          userImage = tf.browser.fromPixels(IMAGE).div(127.5).sub(1)
-          console.log(userImage.print())
-          let prediction = model.predict(userImage.expandDims()).softmax().squeeze()
+          userImage = tf.browser.fromPixels(IMAGE).div(1.0)
+          let resizedTensor = tf.image.resizeBilinear(userImage, [INPUT_WIDTH, INPUT_HEIGHT], true)
+          let prediction = model.predict(resizedTensor.expandDims()).softmax().squeeze()
           console.log(prediction.print())
           let highestIndex = prediction.argMax().arraySync();
           let predictionArray = prediction.arraySync();
@@ -47,7 +52,7 @@ async function loadModel() {
     
     // Warm up the model by passing zeros through it once.
     tf.tidy(function () {
-      let answer = model.predict(tf.zeros([1, MOBILE_NET_INPUT_HEIGHT, MOBILE_NET_INPUT_WIDTH, 3]));
+      let answer = model.predict(tf.zeros([1, INPUT_WIDTH, INPUT_HEIGHT, 3]));
       console.log(answer.softmax().squeeze().print());
     });
   }

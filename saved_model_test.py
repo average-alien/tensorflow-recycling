@@ -51,17 +51,19 @@ class_names = ["1", "2", "3", "4", "5", "6", "7"]
 
 probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
 predictions = probability_model.predict(test_ds)
+# zeros = probability_model.predict(tf.zeros(shape=[1, 192, 192, 3]))
+# print(zeros)
 
-saved_model = "models/7" # increment number for new versions
+# saved_model = "models/7" # increment number for new versions
 
-model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
+# model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
 
-# Saving the trained model
-tf.keras.models.save_model(
-    model=model,
-    filepath=saved_model,
-    overwrite=True
-)
+# # Saving the trained model
+# tf.keras.models.save_model(
+#     model=model,
+#     filepath=saved_model,
+#     overwrite=True
+# )
 
 for images, labels in test_ds.take(1):
     for i in range(7):

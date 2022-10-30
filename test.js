@@ -1,7 +1,10 @@
-import * as tf from '@tensorflow/tfjs-node'
+import * as tf from '@tensorflow/tfjs'
+import * as tfn from '@tensorflow/tfjs-node'
 
-const model = await tf.loadGraphModel('file://js-models/4/model.json')
+const handler = tfn.io.fileSystem('./js-models/4/model.json')
 
-const prediction = model.predict(tf.zeros([1, 192, 192, 3]))
+const model = await tf.loadGraphModel(handler)
+
+const prediction = model.execute(tf.zeros([1, 192, 192, 3]))
 
 console.log(prediction.softmax().squeeze().print())
