@@ -51,7 +51,7 @@ function makePrediction() {
 			let predictionArray = prediction.arraySync();
 			
 			// set status message to the predicted class and percent confience
-			STATUS.innerText = 'Prediction: ' + CLASS_NAMES[highestIndex] + ' with ' + Math.floor(predictionArray[highestIndex] * 100) + '% confidence';
+			STATUS.innerText = CLASS_NAMES[highestIndex] + ' with ' + Math.floor(predictionArray[highestIndex] * 100) + '% confidence';
 
 			// switch case to handle display of info on the resin code
 			switch(highestIndex) {

@@ -49,8 +49,12 @@ test_ds = tf.keras.utils.image_dataset_from_directory(
 
 class_names = ["1", "2", "3", "4", "5", "6", "7"]
 
+test_loss, test_acc = model.evaluate(train_ds, verbose=2)
+print('\nTest accuracy:', test_acc)
+print('\nTest loss', test_loss)
+
 probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
-predictions = probability_model.predict(test_ds)
+predictions = probability_model.predict(train_ds.take(1))
 # zeros = probability_model.predict(tf.zeros(shape=[1, 192, 192, 3]))
 # print(zeros)
 
@@ -65,7 +69,7 @@ predictions = probability_model.predict(test_ds)
 #     overwrite=True
 # )
 
-for images, labels in test_ds.take(1):
+for images, labels in train_ds.take(1):
     for i in range(7):
         print("-------------------------------------")
         print(predictions[i])
